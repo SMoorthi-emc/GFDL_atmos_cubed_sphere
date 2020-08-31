@@ -110,7 +110,7 @@ contains
 !>@details Two different versions of this subroutine are implemented:
 !!-one for the GFS physics
 !!-one for the GFDL physics
- subroutine fv_subgrid_z(isd, ied, jsd, jed, is, ie, js, je, km, nq, dt,  &
+ subroutine fv_subgrid_z( isd, ied, jsd, jed, is, ie, js, je, km, nq, dt,    &
                          tau, nwat, delp, pe, peln, pkz, ta, qa, ua, va,  &
                          hydrostatic, w, delz, u_dt, v_dt, t_dt, k_bot )
 ! Dry convective adjustment-mixing
@@ -118,12 +118,12 @@ contains
       integer, intent(in):: is, ie, js, je, km, nq, nwat
       integer, intent(in):: isd, ied, jsd, jed
       integer, intent(in):: tau         !< Relaxation time scale
-      real,    intent(in):: dt          !< model time step
-      real,    intent(in)::   pe(is-1:ie+1,km+1,js-1:je+1) 
-      real,    intent(in):: peln(is  :ie,  km+1,js  :je)
-      real,    intent(in):: delp(isd:ied,jsd:jed,km)    !< Delta p at each model level
-      real,    intent(in):: delz(is:,js:,1:)            !< Delta z at each model level
-      real,    intent(in)::  pkz(is:ie,js:je,km)
+      real, intent(in):: dt             !< model time step
+      real, intent(in)::   pe(is-1:ie+1,km+1,js-1:je+1) 
+      real, intent(in):: peln(is  :ie,  km+1,js  :je)
+      real, intent(in):: delp(isd:ied,jsd:jed,km)      !< Delta p at each model level
+      real, intent(in):: delz(is:,js:,1:)      !< Delta z at each model level
+      real, intent(in)::  pkz(is:ie,js:je,km)
       logical, intent(in)::  hydrostatic
       integer, intent(in), optional:: k_bot
 ! 
@@ -136,16 +136,15 @@ contains
       real, intent(inout):: v_dt(isd:ied,jsd:jed,km) 
       real, intent(inout):: t_dt(is:ie,js:je,km) 
 !---------------------------Local variables-----------------------------
-      real, parameter    :: zero=0.0, half=0.5, one=1.0 
       real, dimension(is:ie,km):: u0, v0, w0, t0, hd, te, gz, tvm, pm, den
       real q0(is:ie,km,nq), qcon(is:ie,km) 
-      real, dimension(is:ie):: gzh, lcp2, icp2, cvm, cpm, qs, pkzi1, pkzi2
+      real, dimension(is:ie):: gzh, lcp2, icp2, cvm, cpm, qs
 #ifdef MULTI_GASES
       real :: rkx, rdx, rzx, c_air
 #endif
       real ri_ref, ri, pt1, pt2, ratio, tv, cv, tmp, q_liq, q_sol
       real tv1, tv2, g2, h0, mc, fra, rk, rz, rdt, tvd, tv_surf
-      real dh, dq, qsw, dqsdt, tcp3, t_max, t_min, tx1, dpi1, dpi2
+      real dh, dq, qsw, dqsdt, tcp3, t_max, t_min
       integer i, j, k, kk, n, m, iq, km1, im, kbot, l
       real, parameter:: ustar2 = 1.E-4
       real:: cv_air, xvir
@@ -155,9 +154,9 @@ contains
         rk = cp_air/rdgas + 1.
         cv = cp_air - rdgas
 
-      g2 = half*grav
+      g2 = 0.5*grav
 
-      rdt = one/ dt
+      rdt = 1./ dt
       im = ie-is+1
 
       if ( present(k_bot) ) then
@@ -180,11 +179,11 @@ contains
 
       sphum = get_tracer_index (MODEL_ATMOS, 'sphum')
       if ( nwat == 0 ) then
-         xvir = zero
-         rz   = zero
+         xvir = 0.
+         rz = 0.
       else
          xvir = zvir
-         rz   = rvgas - rdgas          ! rz = zvir * rdgas
+         rz = rvgas - rdgas          ! rz = zvir * rdgas
          liq_wat = get_tracer_index (MODEL_ATMOS, 'liq_wat')
          ice_wat = get_tracer_index (MODEL_ATMOS, 'ice_wat')
          rainwat = get_tracer_index (MODEL_ATMOS, 'rainwat')
@@ -213,7 +212,6 @@ contains
 #ifdef MULTI_GASES
 !$OMP                                  rkx,rdx,rzx,c_air,                                    &
 #endif
-!$OMP                                  tx1,pkzi1,pkzi2,dpi1,dpi2,                            &
 !$OMP                                  tv,gz,hd,te,ratio,pt1,pt2,tv1,tv2,ri_ref, ri,mc,km1)
   do 1000 j=js,je  
 
@@ -231,7 +229,7 @@ contains
 #ifdef MULTI_GASES
           tvm(i,k) = t0(i,k)*virq(q0(i,k,:))
 #else
-          tvm(i,k) = t0(i,k)*(one+xvir*q0(i,k,sphum))
+          tvm(i,k) = t0(i,k)*(1.+xvir*q0(i,k,sphum))
 #endif
           u0(i,k) = ua(i,j,k)
           v0(i,k) = va(i,j,k)
@@ -248,493 +246,417 @@ contains
           do i=is,ie
                 tv  = rdgas*tvm(i,k)
            den(i,k) = pm(i,k)/tv
-            gz(i,k) = gzh(i) + tv*(one-pe(i,k,j)/pm(i,k))
-            hd(i,k) = cp_air*tvm(i,k)+gz(i,k)+half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k))
+            gz(i,k) = gzh(i) + tv*(1.-pe(i,k,j)/pm(i,k))
+            hd(i,k) = cp_air*tvm(i,k)+gz(i,k)+0.5*(u0(i,k)**2+v0(i,k)**2)
              gzh(i) = gzh(i) + tv*(peln(i,k+1,j)-peln(i,k,j))
           enddo
        enddo
     else
-
-#ifdef MULTI_GASES
-      do k=kbot, 1, -1
-        if ( nwat == 0 ) then
+       do k=kbot, 1, -1
+       if ( nwat == 0 ) then
           do i=is,ie
+#ifdef MULTI_GASES
              cpm(i) = cp_air*vicpqd(q0(i,k,:))
              cvm(i) = cv_air*vicvqd(q0(i,k,:))
-          enddo
-        elseif ( nwat==1 ) then
-          do i=is,ie
-             tx1    = one - q0(i,k,sphum)
-             cpm(i) = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor
-             cvm(i) = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap
-          enddo
-        elseif ( nwat==2 ) then   ! old GFS (with Zhao-Carr microphysics)
-          do i=is,ie
-             tx1    = one / (one - q0(i,k,nwat))
-             c_air  = cp_air*vicpqd(q0(i,k,:))
-             cpm(i) = c_air + (cp_vapor-c_air)*q0(i,k,sphum) * tx1
-             c_air  = cv_air*vicvqd(q0(i,k,:))
-             cvm(i) = c_air + (cv_vap-c_air)*q0(i,k,sphum) * tx1
-          enddo
-        elseif ( nwat==3 ) then
-          do i=is,ie
-             q_liq = q0(i,k,liq_wat)
-             q_sol = q0(i,k,ice_wat)
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-          enddo
-        elseif ( nwat==4 ) then
-          do i=is,ie
-#ifndef CCPP
-             q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
-             tx1   = one - (q0(i,k,sphum)+q_liq)
-             cpm(i) = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq
-             cvm(i) = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq
 #else
-             q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
-             q_sol = q0(i,k,ice_wat) 
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-#endif
-          enddo
-        elseif ( nwat==5 ) then
-          do i=is,ie
-             q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
-             q_sol = q0(i,k,ice_wat) + q0(i,k,snowwat)
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-          enddo
-        else
-          do i=is,ie
-             q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
-             q_sol = q0(i,k,ice_wat) + q0(i,k,snowwat) + q0(i,k,graupel)
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-          enddo
-        endif
-
-        do i=is,ie
-          den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k) = w(i,j,k)
-            gz(i,k) = gzh(i)  - g2*delz(i,j,k)
-               tmp  = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k) = cpm(i)*t0(i,k) + tmp
-            te(i,k) = cvm(i)*t0(i,k) + tmp
-             gzh(i) = gzh(i) - grav*delz(i,j,k)
-        enddo
-      enddo
-#else
-      do k=kbot, 1, -1
-        if ( nwat == 0 ) then
-          do i=is,ie
              cpm(i) = cp_air
              cvm(i) = cv_air
+#endif
           enddo
-        elseif ( nwat==1 ) then
+       elseif ( nwat==1 ) then
           do i=is,ie
-             tx1    = one - q0(i,k,sphum)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap
+#ifdef MULTI_GASES
+             cpm(i) = (1.-q0(i,k,sphum))*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor
+             cvm(i) = (1.-q0(i,k,sphum))*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap
+#else
+             cpm(i) = (1.-q0(i,k,sphum))*cp_air + q0(i,k,sphum)*cp_vapor
+             cvm(i) = (1.-q0(i,k,sphum))*cv_air + q0(i,k,sphum)*cv_vap
+#endif
           enddo
-        elseif ( nwat==2 ) then   ! old GFS (with Zhao-Carr microphysics)
+       elseif ( nwat==2 ) then   ! GFS
           do i=is,ie
-             tx1    = one - q0(i,k,sphum)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap
+#ifdef MULTI_GASES
+             c_air  = cp_air*vicpqd(q0(i,k,:))
+             cpm(i) = c_air + (cp_vapor-c_air)*q0(i,k,sphum)/(1.0-q0(i,k,nwat))
+             c_air  = cv_air*vicvqd(q0(i,k,:))
+             cvm(i) = c_air + (cv_vap-c_air)*q0(i,k,sphum)/(1.0-q0(i,k,nwat))
+#else
+             cpm(i) = (1.-q0(i,k,sphum))*cp_air + q0(i,k,sphum)*cp_vapor
+             cvm(i) = (1.-q0(i,k,sphum))*cv_air + q0(i,k,sphum)*cv_vap
+#endif
           enddo
-        elseif ( nwat==3 ) then
+       elseif ( nwat==3 ) then
           do i=is,ie
              q_liq = q0(i,k,liq_wat)
              q_sol = q0(i,k,ice_wat)
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-           enddo
-        elseif ( nwat==4 ) then
+#ifdef MULTI_GASES
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
+          enddo
+       elseif ( nwat==4 ) then
           do i=is,ie
 #ifndef CCPP
              q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
-             tx1   = one - (q0(i,k,sphum)+q_liq)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq
+#ifdef MULTI_GASES
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq))*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq))*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq
+#else
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq))*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq))*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq
+#endif
+
 #else
              q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
              q_sol = q0(i,k,ice_wat) 
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#ifdef MULTI_GASES
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
+
+
 #endif
           enddo
-        elseif ( nwat==5 ) then
+       elseif ( nwat==5 ) then
           do i=is,ie
              q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
              q_sol = q0(i,k,ice_wat) + q0(i,k,snowwat)
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#ifdef MULTI_GASES
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
           enddo
-        else
+       else
           do i=is,ie
              q_liq = q0(i,k,liq_wat) + q0(i,k,rainwat)
              q_sol = q0(i,k,ice_wat) + q0(i,k,snowwat) + q0(i,k,graupel)
-             tx1   = one - (q0(i,k,sphum)+q_liq+q_sol)
-             cpm(i) = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-             cvm(i) = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-          enddo
-        endif
-
-        do i=is,ie
-          den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k) = w(i,j,k)
-            gz(i,k) = gzh(i)  - g2*delz(i,j,k)
-               tmp  = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k) = cpm(i)*t0(i,k) + tmp
-            te(i,k) = cvm(i)*t0(i,k) + tmp
-             gzh(i) = gzh(i) - grav*delz(i,j,k)
-        enddo
-      enddo
+#ifdef MULTI_GASES
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+             cpm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+             cvm(i) = (1.-(q0(i,k,sphum)+q_liq+q_sol))*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 #endif
+          enddo
+       endif
+
+          do i=is,ie
+           den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
+             w0(i,k) = w(i,j,k)
+             gz(i,k) = gzh(i)  - g2*delz(i,j,k)
+                tmp  = gz(i,k) + 0.5*(u0(i,k)**2+v0(i,k)**2+w0(i,k)**2)
+             hd(i,k) = cpm(i)*t0(i,k) + tmp
+             te(i,k) = cvm(i)*t0(i,k) + tmp
+              gzh(i) = gzh(i) - grav*delz(i,j,k)
+          enddo
+       enddo
     endif
 
-    do n=1,m
+   do n=1,m
 
-      if ( m==3 ) then
+     if ( m==3 ) then
         if ( n==1) ratio = 0.25
         if ( n==2) ratio = 0.5
         if ( n==3) ratio = 0.999
-      else
-        ratio = real(n)/real(m)
-      endif
+     else
+      ratio = real(n)/real(m)
+     endif
 
       do i=is,ie
-         gzh(i) = zero
+         gzh(i) = 0.
       enddo
 
 ! Compute total condensate
-      if ( nwat < 2 ) then
-        do k=1,kbot
-          do i=is,ie
-            qcon(i,k) = zero
-          enddo
-        enddo
-      elseif ( nwat == 2 ) then   ! GFS_2015
-        do k=1,kbot
-          do i=is,ie
+   if ( nwat<2 ) then
+      do k=1,kbot
+         do i=is,ie
+            qcon(i,k) = 0.
+         enddo
+      enddo
+   elseif ( nwat==2 ) then   ! GFS_2015
+      do k=1,kbot
+         do i=is,ie
             qcon(i,k) = q0(i,k,liq_wat)
-          enddo
-        enddo
-      elseif ( nwat == 3 ) then
-        do k=1,kbot
-          do i=is,ie
+         enddo
+      enddo
+   elseif ( nwat==3 ) then
+      do k=1,kbot
+         do i=is,ie
             qcon(i,k) = q0(i,k,liq_wat) + q0(i,k,ice_wat)
-          enddo
-        enddo
-      elseif ( nwat == 4 ) then
-        do k=1,kbot
-          do i=is,ie
+         enddo
+      enddo
+   elseif ( nwat==4 ) then
+      do k=1,kbot
+         do i=is,ie
 #ifndef CCPP
             qcon(i,k) = q0(i,k,liq_wat) + q0(i,k,rainwat)
 #else
             qcon(i,k) = q0(i,k,liq_wat) + q0(i,k,rainwat) + q0(i,k,ice_wat)
 #endif
-          enddo
-        enddo
-      elseif ( nwat == 5 ) then
-        do k=1,kbot
-          do i=is,ie
+         enddo
+      enddo
+   elseif ( nwat==5 ) then
+      do k=1,kbot
+         do i=is,ie
             qcon(i,k) = q0(i,k,liq_wat)+q0(i,k,ice_wat)+q0(i,k,snowwat)+q0(i,k,rainwat)
-          enddo
-        enddo
-      else
-        do k=1,kbot
-          do i=is,ie
+         enddo
+      enddo
+   else
+      do k=1,kbot
+         do i=is,ie
             qcon(i,k) = q0(i,k,liq_wat)+q0(i,k,ice_wat)+q0(i,k,snowwat)+q0(i,k,rainwat)+q0(i,k,graupel)
-          enddo
-        enddo
-      endif
+         enddo
+      enddo
+   endif
 
-      pkzi2(is:ie) = one / pkz(is:ie,j,kbot)
       do k=kbot, 2, -1
-        km1 = k-1
-        do i=is,ie
+         km1 = k-1
+         do i=is,ie
 ! Richardson number = g*delz * del_theta/theta / (del_u**2 + del_v**2)
 ! Use exact form for "density temperature"
 #ifdef MULTI_GASES
-          tv1 = t0(i,km1)*virq_qpz(q0(i,km1,:),qcon(i,km1))
-          tv2 = t0(i,k  )*virq_qpz(q0(i,k,  :),qcon(i,k  ))
+            tv1 = t0(i,km1)*virq_qpz(q0(i,km1,:),qcon(i,km1))
+            tv2 = t0(i,k  )*virq_qpz(q0(i,k,  :),qcon(i,k  ))
 #else
-          tv1 = t0(i,km1)*(one+xvir*q0(i,km1,sphum)-qcon(i,km1))
-          tv2 = t0(i,k  )*(one+xvir*q0(i,k  ,sphum)-qcon(i,k))
+            tv1 = t0(i,km1)*(1.+xvir*q0(i,km1,sphum)-qcon(i,km1))
+            tv2 = t0(i,k  )*(1.+xvir*q0(i,k  ,sphum)-qcon(i,k))
 #endif
-          pkzi1(i) = one / pkz(i,j,km1)
-          pt1 = tv1 * pkzi1(i)
-          pt2 = tv2 * pkzi2(i)
-          pkzi2(i) = pkzi1(i)
+            pt1 = tv1 / pkz(i,j,km1)
+            pt2 = tv2 / pkz(i,j,k  )
 !
-          ri = (gz(i,km1)-gz(i,k))*(pt1-pt2)/( 0.5*(pt1+pt2)*        &
-               ((u0(i,km1)-u0(i,k))**2+(v0(i,km1)-v0(i,k))**2+ustar2) )
-          if ( tv1 > t_max .and. tv1 > tv2 ) then
+            ri = (gz(i,km1)-gz(i,k))*(pt1-pt2)/( 0.5*(pt1+pt2)*        &
+                 ((u0(i,km1)-u0(i,k))**2+(v0(i,km1)-v0(i,k))**2+ustar2) )
+            if ( tv1>t_max .and. tv1>tv2 ) then
 ! top layer unphysically warm
-             ri = zero
-          elseif ( tv2<t_min ) then
-             ri = min(ri, 0.1)
-          endif
+               ri = 0.
+            elseif ( tv2<t_min ) then
+               ri = min(ri, 0.1)
+            endif
 ! Adjustment for K-H instability:
 ! Compute equivalent mass flux: mc
 ! Add moist 2-dz instability consideration:
-!!!       ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
-          ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(400.e2,pm(i,k))/200.e2 )
+!!!         ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
+            ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(400.e2,pm(i,k))/200.e2 )
 ! Enhancing mixing at the model top
-          if ( k==2 ) then
-               ri_ref = 4.*ri_ref
-          elseif ( k==3 ) then
-               ri_ref = 2.*ri_ref
-          elseif ( k==4 ) then
-               ri_ref = 1.5*ri_ref
-          endif
+            if ( k==2 ) then
+                 ri_ref = 4.*ri_ref
+            elseif ( k==3 ) then
+                 ri_ref = 2.*ri_ref
+            elseif ( k==4 ) then
+                 ri_ref = 1.5*ri_ref
+            endif
 
-          if ( ri < ri_ref ) then
-            dpi1 = one / delp(i,j,km1)
-            dpi2 = one / delp(i,j,k)
-            tx1  = one - max(zero, ri/ri_ref)
-             mc = ratio*delp(i,j,km1)*delp(i,j,k)/(delp(i,j,km1)+delp(i,j,k)) * tx1 * tx1
-             do iq=1,nq
-                h0 = mc*(q0(i,k,iq)-q0(i,km1,iq))
-                q0(i,km1,iq) = q0(i,km1,iq) + h0 * dpi1
-                q0(i,k  ,iq) = q0(i,k  ,iq) - h0 * dpi2
-             enddo
+            if ( ri < ri_ref ) then
+               mc = ratio*delp(i,j,km1)*delp(i,j,k)/(delp(i,j,km1)+delp(i,j,k))*(1.-max(0.0,ri/ri_ref))**2
+                 do iq=1,nq
+                    h0 = mc*(q0(i,k,iq)-q0(i,km1,iq))
+                    q0(i,km1,iq) = q0(i,km1,iq) + h0/delp(i,j,km1)
+                    q0(i,k  ,iq) = q0(i,k  ,iq) - h0/delp(i,j,k  )
+                 enddo
 ! Recompute qcon
-             if ( nwat < 2 ) then
-                qcon(i,km1) = zero
-             elseif ( nwat == 2 ) then  ! GFS_2015
-                qcon(i,km1) = q0(i,km1,liq_wat)
-             elseif ( nwat == 3 ) then  ! AM3/AM4
-                qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat)
-             elseif ( nwat == 4 ) then  ! K_warm_rain scheme with fake ice
+                 if ( nwat<2 ) then
+                    qcon(i,km1) = 0.
+                 elseif ( nwat==2 ) then  ! GFS_2015
+                    qcon(i,km1) = q0(i,km1,liq_wat)
+                 elseif ( nwat==3 ) then  ! AM3/AM4
+                    qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat)
+                 elseif ( nwat==4 ) then  ! K_warm_rain scheme with fake ice
 #ifndef CCPP
-                qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,rainwat)
+                    qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,rainwat)
 #else
-                qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,rainwat) + q0(i,km1,ice_wat)
+                    qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat) +                  &
+                                  q0(i,km1,rainwat)
 #endif
-             elseif ( nwat == 5 ) then  ! K_warm_rain scheme with fake ice
-                qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat) +                  &
-                              q0(i,km1,snowwat) + q0(i,km1,rainwat)
-             else
-                qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat) +                  &
-                              q0(i,km1,snowwat) + q0(i,km1,rainwat) + q0(i,km1,graupel)
-             endif
+                 elseif ( nwat==5 ) then  ! K_warm_rain scheme with fake ice
+                    qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat) +                  &
+                                  q0(i,km1,snowwat) + q0(i,km1,rainwat)
+                 else
+                    qcon(i,km1) = q0(i,km1,liq_wat) + q0(i,km1,ice_wat) +                  &
+                                  q0(i,km1,snowwat) + q0(i,km1,rainwat) + q0(i,km1,graupel)
+                 endif
 ! u:
-             h0 = mc*(u0(i,k)-u0(i,km1))
-             u0(i,km1) = u0(i,km1) + h0 * dpi1
-             u0(i,k  ) = u0(i,k  ) - h0 * dpi2
+                 h0 = mc*(u0(i,k)-u0(i,k-1))
+                 u0(i,k-1) = u0(i,k-1) + h0/delp(i,j,k-1)
+                 u0(i,k  ) = u0(i,k  ) - h0/delp(i,j,k  )
 ! v:
-             h0 = mc*(v0(i,k)-v0(i,km1))
-             v0(i,km1) = v0(i,km1) + h0 * dpi1
-             v0(i,k  ) = v0(i,k  ) - h0 * dpi2
+                 h0 = mc*(v0(i,k)-v0(i,k-1))
+                 v0(i,k-1) = v0(i,k-1) + h0/delp(i,j,k-1)
+                 v0(i,k  ) = v0(i,k  ) - h0/delp(i,j,k  )
 
-             if ( hydrostatic ) then
+              if ( hydrostatic ) then
 ! Static energy
-                      h0 = mc*(hd(i,k)-hd(i,km1))
-               hd(i,km1) = hd(i,km1) + h0 * dpi1
-               hd(i,k  ) = hd(i,k  ) - h0 * dpi2
-             else
+                        h0 = mc*(hd(i,k)-hd(i,k-1))
+                 hd(i,k-1) = hd(i,k-1) + h0/delp(i,j,k-1)
+                 hd(i,k  ) = hd(i,k  ) - h0/delp(i,j,k  )
+              else
 ! Total energy
-                      h0 = mc*(hd(i,k)-hd(i,km1))
-               te(i,km1) = te(i,km1) + h0 * dpi1
-               te(i,k  ) = te(i,k  ) - h0 * dpi2
+                        h0 = mc*(hd(i,k)-hd(i,k-1))
+                 te(i,k-1) = te(i,k-1) + h0/delp(i,j,k-1)
+                 te(i,k  ) = te(i,k  ) - h0/delp(i,j,k  )
 ! w:
-                      h0 = mc*(w0(i,k)-w0(i,km1))
-               w0(i,km1) = w0(i,km1) + h0 * dpi1
-               w0(i,k  ) = w0(i,k  ) - h0 * dpi2
-             endif
-          endif
-        enddo
+                        h0 = mc*(w0(i,k)-w0(i,k-1))
+                 w0(i,k-1) = w0(i,k-1) + h0/delp(i,j,k-1)
+                 w0(i,k  ) = w0(i,k  ) - h0/delp(i,j,k  )
+              endif
+            endif
+         enddo
 
 !-------------- 
 ! Retrive Temp:
 !--------------
-        if ( hydrostatic ) then
-          kk = k
-          do i=is,ie
+       if ( hydrostatic ) then
+         kk = k
+         do i=is,ie
 #ifdef MULTI_GASES
             rkx = cp_air/rdgas * (vicpqd(q0(i,kk,:))/virqd(q0(i,kk,:))) + 1
             rdx = rdgas*virqd(q0(i,kk,:))
             rzx = rvgas - rdx
-            t0(i,kk) = (hd(i,kk)-gzh(i)-half*(u0(i,kk)*u0(i,kk)+v0(i,kk)*v0(i,kk)))  &
+            t0(i,kk) = (hd(i,kk)-gzh(i)-0.5*(u0(i,kk)**2+v0(i,kk)**2))  &
                      / ( rkx - pe(i,kk,j)/pm(i,kk) )
               gzh(i) = gzh(i) + t0(i,kk)*(peln(i,kk+1,j)-peln(i,kk,j))
-            rdx = rdx + rzx*q0(i,kk,sphum)/(one-sum(q0(i,kk,sphum+1:sphum+nwat-1)))
+            rdx = rdx + rzx*q0(i,kk,sphum)/(1.0-sum(q0(i,kk,sphum+1:sphum+nwat-1)))
             t0(i,kk) = t0(i,kk) / rdx
 #else
-            t0(i,kk) = (hd(i,kk)-gzh(i)-half*(u0(i,kk)*u0(i,kk)+v0(i,kk)*v0(i,kk)))  &
+            t0(i,kk) = (hd(i,kk)-gzh(i)-0.5*(u0(i,kk)**2+v0(i,kk)**2))  &
                      / ( rk - pe(i,kk,j)/pm(i,kk) )
               gzh(i) = gzh(i) + t0(i,kk)*(peln(i,kk+1,j)-peln(i,kk,j))
             t0(i,kk) = t0(i,kk) / ( rdgas + rz*q0(i,kk,sphum) )
 #endif
-          enddo
-          kk = km1
-          do i=is,ie
+         enddo
+         kk = k-1
+         do i=is,ie
 #ifdef MULTI_GASES
             rkx = cp_air/rdgas * (vicpqd(q0(i,kk,:))/virqd(q0(i,kk,:))) + 1
             rdx = rdgas*virqd(q0(i,kk,:))
             rzx = rvgas - rdx
             rdx = rdx + rzx*q0(i,kk,sphum)/(1.0-sum(q0(i,kk,sphum+1:sphum+nwat-1)))
-            t0(i,kk) = (hd(i,kk)-gzh(i)-half*(u0(i,kk)*u0(i,kk)+v0(i,kk)*v0(i,kk)))  &
+            t0(i,kk) = (hd(i,kk)-gzh(i)-0.5*(u0(i,kk)**2+v0(i,kk)**2))  &
                      / ((rkx-pe(i,kk,j)/pm(i,kk))*rdx)
 #else
-            t0(i,kk) = (hd(i,kk)-gzh(i)-half*(u0(i,kk)*u0(i,kk)+v0(i,kk)*v0(i,kk)))  &
+            t0(i,kk) = (hd(i,kk)-gzh(i)-0.5*(u0(i,kk)**2+v0(i,kk)**2))  &
                      / ((rk-pe(i,kk,j)/pm(i,kk))*(rdgas+rz*q0(i,kk,sphum)))
 #endif
-          enddo
-        else
+         enddo
+       else
 ! Non-hydrostatic under constant volume heating/cooling
-
+         do kk=k-1,k
+           if ( nwat == 0 ) then
+            do i=is,ie
 #ifdef MULTI_GASES
-          do kk=km1,k
-            if ( nwat == 0 ) then
-              do i=is,ie
-                cpm(i) = cp_air*vicpqd(q0(i,kk,:))
-                cvm(i) = cv_air*vicvqd(q0(i,kk,:))
-              enddo
-            elseif ( nwat == 1 ) then
-              do i=is,ie
-                tx1    = one - q0(i,kk,sphum)
-                cpm(i) = tx1*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor
-                cvm(i) = tx1*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap
-              enddo
-            elseif ( nwat == 2 ) then
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat)
-                tx1   = one / (one - q_liq)
-                c_air  = cp_air*vicpqd(q0(i,kk,:))
-                cpm(i) = c_air + (cp_vapor-c_air) * q0(i,kk,sphum) * tx1
-                c_air  = cv_air*vicvqd(q0(i,kk,:))
-                cvm(i) = c_air + (cv_vap-c_air) * q0(i,kk,sphum) * tx1
-              enddo
-            elseif ( nwat == 3 ) then
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat)
-                q_sol = q0(i,kk,ice_wat)
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-              enddo
-            elseif ( nwat == 4 ) then
-              do i=is,ie
-#ifndef CCPP
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                tx1   = one - (q0(i,kk,sphum)+q_liq)
-                cpm(i) = tx1*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq
-                cvm(i) = tx1*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq
+               cpm(i) = cp_air*vicpqd(q0(i,kk,:))
+               cvm(i) = cv_air*vicvqd(q0(i,kk,:))
 #else
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                q_sol = q0(i,kk,ice_wat) 
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+               cpm(i) = cp_air
+               cvm(i) = cv_air
 #endif
-              enddo
-            elseif ( nwat == 5 ) then
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                q_sol = q0(i,kk,ice_wat) + q0(i,kk,snowwat)
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-              enddo
-            else
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                q_sol = q0(i,kk,ice_wat) + q0(i,kk,snowwat) + q0(i,kk,graupel)
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-              enddo
-            endif
-
-            do i=is,ie
-              tv = gz(i,kk) + half*(u0(i,kk)*u0(i,kk)+v0(i,kk)*v0(i,kk)+w0(i,kk)*w0(i,kk))
-              t0(i,kk) = (te(i,kk)- tv) / cvm(i)
-              hd(i,kk) = cpm(i)*t0(i,kk) + tv
             enddo
-          enddo   ! kk loop
-#else
-          do kk=km1,k
-            if ( nwat == 0 ) then
-              do i=is,ie
-                cpm(i) = cp_air
-                cvm(i) = cv_air
-              enddo
-            elseif ( nwat == 1 ) then
-              do i=is,ie
-                tx1    = one - q0(i,kk,sphum)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap
-              enddo
-            elseif ( nwat == 2 ) then
-              do i=is,ie
-                tx1    = one - q0(i,kk,sphum)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap
-              enddo
-            elseif ( nwat == 3 ) then
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat)
-                q_sol = q0(i,kk,ice_wat)
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-              enddo
-            elseif ( nwat == 4 ) then
-              do i=is,ie
-#ifndef CCPP
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                tx1   = one - (q0(i,kk,sphum)+q_liq)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq
-#else
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                q_sol = q0(i,kk,ice_wat) 
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-#endif
-              enddo
-            elseif ( nwat == 5 ) then
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                q_sol = q0(i,kk,ice_wat) + q0(i,kk,snowwat)
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-              enddo
-            else
-              do i=is,ie
-                q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
-                q_sol = q0(i,kk,ice_wat) + q0(i,kk,snowwat) + q0(i,kk,graupel)
-                tx1   = one - (q0(i,kk,sphum)+q_liq+q_sol)
-                cpm(i) = tx1*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
-                cvm(i) = tx1*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
-              enddo
-            endif
-
+           elseif ( nwat == 1 ) then
             do i=is,ie
-              tv = gz(i,kk) + half*(u0(i,kk)*u0(i,kk)+v0(i,kk)*v0(i,kk)+w0(i,kk)*w0(i,kk))
-              t0(i,kk) = (te(i,kk)- tv) / cvm(i)
-              hd(i,kk) = cpm(i)*t0(i,kk) + tv
-            enddo
-          enddo      ! kk loop
+#ifdef MULTI_GASES
+               cpm(i) = (1.-q0(i,kk,sphum))*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor
+               cvm(i) = (1.-q0(i,kk,sphum))*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap
+#else
+               cpm(i) = (1.-q0(i,kk,sphum))*cp_air + q0(i,kk,sphum)*cp_vapor
+               cvm(i) = (1.-q0(i,kk,sphum))*cv_air + q0(i,kk,sphum)*cv_vap
 #endif
-        endif
+            enddo
+           elseif ( nwat == 2 ) then
+            do i=is,ie
+#ifdef MULTI_GASES
+               q_liq = q0(i,kk,liq_wat)
+               c_air  = cp_air*vicpqd(q0(i,kk,:))
+               cpm(i) = c_air + (cp_vapor-c_air)*q0(i,kk,sphum)/(1.0-q_liq)
+               c_air  = cv_air*vicvqd(q0(i,kk,:))
+               cvm(i) = c_air + (cv_vap-c_air)*q0(i,kk,sphum)/(1.0-q_liq)
+#else
+               cpm(i) = (1.-q0(i,kk,sphum))*cp_air + q0(i,kk,sphum)*cp_vapor
+               cvm(i) = (1.-q0(i,kk,sphum))*cv_air + q0(i,kk,sphum)*cv_vap
+#endif
+            enddo
+           elseif ( nwat == 3 ) then
+            do i=is,ie
+               q_liq = q0(i,kk,liq_wat)
+               q_sol = q0(i,kk,ice_wat)
+#ifdef MULTI_GASES
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
+            enddo
+           elseif ( nwat == 4 ) then
+            do i=is,ie
+#ifndef CCPP
+               q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
+#ifdef MULTI_GASES
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq))*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq))*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq
+#else
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq))*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq))*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq
+#endif
+#else
+               q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
+               q_sol = q0(i,kk,ice_wat) 
+#ifdef MULTI_GASES
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
+
+
+#endif
+            enddo
+           elseif ( nwat == 5 ) then
+            do i=is,ie
+               q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
+               q_sol = q0(i,kk,ice_wat) + q0(i,kk,snowwat)
+#ifdef MULTI_GASES
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
+            enddo
+           else
+            do i=is,ie
+               q_liq = q0(i,kk,liq_wat) + q0(i,kk,rainwat)
+               q_sol = q0(i,kk,ice_wat) + q0(i,kk,snowwat) + q0(i,kk,graupel)
+#ifdef MULTI_GASES
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air*vicpqd(q0(i,kk,:)) + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air*vicvqd(q0(i,kk,:)) + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#else
+               cpm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cp_air + q0(i,kk,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
+               cvm(i) = (1.-(q0(i,kk,sphum)+q_liq+q_sol))*cv_air + q0(i,kk,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
+#endif
+            enddo
+           endif
+     
+            do i=is,ie
+               tv = gz(i,kk) + 0.5*(u0(i,kk)**2+v0(i,kk)**2+w0(i,kk)**2)
+               t0(i,kk) = (te(i,kk)- tv) / cvm(i)
+               hd(i,kk) = cpm(i)*t0(i,kk) + tv
+            enddo
+         enddo
+       endif
       enddo   ! k-loop
-    enddo     ! n-loop
+   enddo       ! n-loop
 
 !--------------------
-   if ( fra < one ) then
+   if ( fra < 1. ) then
       do k=1, kbot
          do i=is,ie
             t0(i,k) = ta(i,j,k) + (t0(i,k) - ta(i,j,k))*fra
@@ -791,7 +713,7 @@ contains
 
 #else
  subroutine fv_subgrid_z( isd, ied, jsd, jed, is, ie, js, je, km, nq, dt,    &
-                         tau, nwat, delp, pe, peln, pkz, ta, qa, ua, va,     &
+                         tau, nwat, delp, pe, peln, pkz, ta, qa, ua, va,  &
                          hydrostatic, w, delz, u_dt, v_dt, t_dt, q_dt, k_bot )
 ! Dry convective adjustment-mixing
 !-------------------------------------------
