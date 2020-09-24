@@ -604,7 +604,7 @@ contains
 !
           ri = (gz(i,km1)-gz(i,k))*(pt1-pt2)/( 0.5*(pt1+pt2)*        &
                ((u0(i,km1)-u0(i,k))**2+(v0(i,km1)-v0(i,k))**2+ustar2) )
-          if ( tv1 > t_max .and. tv1 > tv2 ) then
+          if ( tv1 > t_max .and. tv1 > tv2 .and. pe(i,k,j) > 0.2) then
 ! top layer unphysically warm
              ri = zero
           elseif ( tv2<t_min ) then
