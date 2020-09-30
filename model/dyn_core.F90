@@ -528,12 +528,12 @@ contains
 !$OMP                                  omga,ut,vt,divgd,flagstruct,dt2,hydrostatic,bd,  &
 !$OMP                                  gridstruct)
       do k=1,npz
-         call c_sw(delpc(isd,jsd,k), delp(isd,jsd,k),  ptc(isd,jsd,k),    &
-                      pt(isd,jsd,k),    u(isd,jsd,k),    v(isd,jsd,k),    &
-                       w(isd:,jsd:,k),   uc(isd,jsd,k),   vc(isd,jsd,k),    &
-                      ua(isd,jsd,k),   va(isd,jsd,k), omga(isd,jsd,k),    &
-                      ut(isd,jsd,k),   vt(isd,jsd,k), divgd(isd,jsd,k),   &
-                      flagstruct%nord,   dt2,  hydrostatic,  .true., bd,  &
+         call c_sw(delpc(isd,jsd,k), delp(isd,jsd,k),   ptc(isd,jsd,k),    &
+                      pt(isd,jsd,k),    u(isd,jsd,k),     v(isd,jsd,k),    &
+                       w(isd:,jsd:,k), uc(isd,jsd,k),    vc(isd,jsd,k),    &
+                      ua(isd,jsd,k),   va(isd,jsd,k),  omga(isd,jsd,k),    &
+                      ut(isd,jsd,k),   vt(isd,jsd,k), divgd(isd,jsd,k),    &
+                      flagstruct%nord,   dt2,  hydrostatic,  .true., bd,   &
                       gridstruct, flagstruct)
       enddo
                                                      call timing_off('c_sw')

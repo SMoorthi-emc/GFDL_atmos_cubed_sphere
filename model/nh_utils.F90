@@ -66,7 +66,9 @@ module nh_utils_mod
    public sim3p0_solver, rim_2d
    public Riem_Solver_c
 
-   real, parameter:: dz_min = 2.
+!  real, parameter:: dz_min = 6.
+   real, parameter:: dz_min = 4.
+!  real, parameter:: dz_min = 2.
    real, parameter:: r3 = 1./3.
 
 CONTAINS 
