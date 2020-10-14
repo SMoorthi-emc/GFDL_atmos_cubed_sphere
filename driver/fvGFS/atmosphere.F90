@@ -276,7 +276,7 @@ contains
    use CCPP_data,         only: ccpp_suite,          &
                                 cdata => cdata_tile, &
                                 CCPP_interstitial
-#ifdef OPENMP
+#ifdef _OPENMP
    use omp_lib
 #endif
 #endif
@@ -434,7 +434,7 @@ contains
    cdata%thrd_no = 1
 
    ! Create shared data type for fast and slow physics, one for each thread
-#ifdef OPENMP
+#ifdef _OPENMP
    nthreads = omp_get_max_threads()
 #else
    nthreads = 1
