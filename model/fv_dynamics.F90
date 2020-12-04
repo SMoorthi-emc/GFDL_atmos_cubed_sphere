@@ -1142,7 +1142,7 @@ contains
     real, intent(inout):: pt(bd%isd:bd%ied,bd%jsd:bd%jed,npz) !< temp
     real, intent(inout):: ua(bd%isd:bd%ied,bd%jsd:bd%jed,npz) ! 
     real, intent(inout):: va(bd%isd:bd%ied,bd%jsd:bd%jed,npz) ! 
-    real, intent(inout):: delz(bd%isd:    ,bd%jsd:      ,1: ) !< delta-height (m); non-hydrostatic only
+    real, intent(inout):: delz(bd%is:     ,bd%js:      ,1: ) !< delta-height (m); non-hydrostatic only
     real,   intent(in) :: agrid(bd%isd:bd%ied,  bd%jsd:bd%jed,2)
     real, intent(in) :: phis(bd%isd:bd%ied,bd%jsd:bd%jed)     !< Surface geopotential (g*Z_surf)
     type(fv_grid_type), intent(IN) :: gridstruct
@@ -1318,7 +1318,7 @@ contains
     real, intent(inout):: pt(bd%isd:bd%ied,bd%jsd:bd%jed,npz) !< temp
     real, intent(inout):: ua(bd%isd:bd%ied,bd%jsd:bd%jed,npz) ! 
     real, intent(inout):: va(bd%isd:bd%ied,bd%jsd:bd%jed,npz) ! 
-    real, intent(inout):: delz(bd%isd:    ,bd%jsd:      ,1: ) !< delta-height (m); non-hydrostatic only
+    real, intent(inout):: delz(bd%is:     ,bd%js:      ,1: )  !< delta-height (m); non-hydrostatic only
     type(fv_grid_type), intent(IN) :: gridstruct
     type(domain2d), intent(INOUT) :: domain
 ! local:
