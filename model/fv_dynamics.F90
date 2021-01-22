@@ -1,22 +1,22 @@
 
 !***********************************************************************
-!*                   GNU Lesser General Public License                 
+!*                   GNU Lesser General Public License
 !*
 !* This file is part of the FV3 dynamical core.
 !*
-!* The FV3 dynamical core is free software: you can redistribute it 
+!* The FV3 dynamical core is free software: you can redistribute it
 !* and/or modify it under the terms of the
 !* GNU Lesser General Public License as published by the
-!* Free Software Foundation, either version 3 of the License, or 
+!* Free Software Foundation, either version 3 of the License, or
 !* (at your option) any later version.
 !*
-!* The FV3 dynamical core is distributed in the hope that it will be 
-!* useful, but WITHOUT ANYWARRANTY; without even the implied warranty 
-!* of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+!* The FV3 dynamical core is distributed in the hope that it will be
+!* useful, but WITHOUT ANYWARRANTY; without even the implied warranty
+!* of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 !* See the GNU General Public License for more details.
 !*
 !* You should have received a copy of the GNU Lesser General Public
-!* License along with the FV3 dynamical core.  
+!* License along with the FV3 dynamical core.
 !* If not, see <http://www.gnu.org/licenses/>.
 !***********************************************************************
 
@@ -154,7 +154,7 @@ implicit none
    logical :: RF_initialized = .false.
    logical :: pt_initialized = .false.
    logical :: bad_range = .false.
-   real, allocatable ::  rf(:)
+   real, allocatable, save ::  rf(:)
    integer :: kmax=1
    integer :: k_rf = 0
 
@@ -718,16 +718,16 @@ contains
                                                   call avec_timer_start(6)
 #endif
 
-         call Lagrangian_to_Eulerian(last_step, consv_te, ps, pe, delp,          &
-                     pkz, pk, mdt, bdt, npx, npy, npz, is,ie,js,je, isd,ied,jsd,jed,       &
-                     nr, nwat, sphum, q_con, u,  v, w, delz, pt, q, phis,    &
+         call Lagrangian_to_Eulerian(last_step, consv_te, ps, pe, delp,                 &
+                     pkz, pk, mdt, bdt, npx, npy, npz, is,ie,js,je, isd,ied,jsd,jed,    &
+                     nr, nwat, sphum, q_con, u,  v, w, delz, pt, q, phis,               &
                      zvir, cp_air, akap, cappa, flagstruct%kord_mt, flagstruct%kord_wz, &
-                     kord_tracer, flagstruct%kord_tm, peln, te_2d,               &
-                     ng, ua, va, omga, dp1, ws, fill, reproduce_sum,             &
+                     kord_tracer, flagstruct%kord_tm, peln, te_2d,                      &
+                     ng, ua, va, omga, dp1, ws, fill, reproduce_sum,                    &
                      idiag%id_mdt>0, dtdt_m, ptop, ak, bk, pfull, gridstruct, domain,   &
-                     flagstruct%do_sat_adj, hydrostatic, hybrid_z, do_omega,     &
-                     flagstruct%adiabatic, do_adiabatic_init, &
-                     flagstruct%c2l_ord, bd, flagstruct%fv_debug, &
+                     flagstruct%do_sat_adj, hydrostatic, hybrid_z, do_omega,            &
+                     flagstruct%adiabatic, do_adiabatic_init,                           &
+                     flagstruct%c2l_ord, bd, flagstruct%fv_debug,                       &
                      flagstruct%moist_phys)
 
      if ( flagstruct%fv_debug ) then
@@ -1101,10 +1101,10 @@ contains
     type(fv_grid_type), intent(IN) :: gridstruct
     type(domain2d), intent(INOUT) :: domain
 !
-    real, allocatable ::  u2f(:,:,:)
+!   real, allocatable ::  u2f(:,:,:)
     real, parameter:: u0   = 60.   !< scaling velocity
     real, parameter:: sday = 86400.
-    real rcv, tau0
+    real rcv, tau0, tem, tem1
     integer i, j, k
 
     integer :: is,  ie,  js,  je
@@ -1155,7 +1155,8 @@ contains
           do k=1, npz
              if ( pm(k) < rf_cutoff ) then
                  if ( tau < 0 ) then ! GSM formula
-                  rf(k) = dt/tau0*( log(rf_cutoff/pm(k)) )**2
+!                 rf(k) = dt/tau0*( log(rf_cutoff/pm(k)) )**2
+                  rf(k) = dt/tau0 * log(rf_cutoff/pm(k))
                  else
                   rf(k) = dt/tau0*sin(0.5*pi*log(rf_cutoff/pm(k))/log(rf_cutoff/ptop))**2
                  endif
@@ -1170,59 +1171,66 @@ contains
 
     call c2l_ord2(u, v, ua, va, gridstruct, npz, gridstruct%grid_type, bd, gridstruct%bounded_domain)
 
-    allocate( u2f(isd:ied,jsd:jed,kmax) )
+!   allocate( u2f(isd:ied,jsd:jed,kmax) )
 
-!$OMP parallel do default(none) shared(is,ie,js,je,kmax,pm,rf_cutoff,hydrostatic,ua,va,agrid, &
-!$OMP                                  u2f,rf,w)
-    do k=1,kmax
-       if ( pm(k) < rf_cutoff ) then
-          u2f(:,:,k) = 1. / (1.+rf(k))
-       else
-          u2f(:,:,k) = 1.
-       endif
-    enddo
-                                        call timing_on('COMM_TOTAL')
-    call mpp_update_domains(u2f, domain)
-                                        call timing_off('COMM_TOTAL')
+!!$OMP parallel do default(none) shared(is,ie,js,je,kmax,pm,rf_cutoff,hydrostatic,ua,va,agrid, &
+!!$OMP                                  u2f,rf,w)
+!    do k=1,kmax
+!       if ( pm(k) < rf_cutoff ) then
+!          u2f(:,:,k) = 1. / (1.+rf(k))
+!       else
+!          u2f(:,:,k) = 1.
+!       endif
+!    enddo
+!                                        call timing_on('COMM_TOTAL')
+!    call mpp_update_domains(u2f, domain)
+!                                        call timing_off('COMM_TOTAL')
 
-!$OMP parallel do default(none) shared(is,ie,js,je,kmax,pm,rf_cutoff,w,rf,u,v, &
+!$OMP parallel do default(none) shared(is,ie,js,je,kmax,pm,rf_cutoff,w,rf,u,v,       &
 #ifdef HIWPP
-!$OMP                                  u00,v00, &
+!$OMP                                  u00,v00,                                      &
 #endif
-!$OMP                                  conserve,hydrostatic,pt,ua,va,u2f,cp,rg,ptop,rcv)
+!$OMP                                  conserve,hydrostatic,pt,ua,va,cp,rg,ptop,rcv) &
+!!$OMP                                 conserve,hydrostatic,pt,ua,va,u2f,cp,rg,ptop,rcv)
+!$OMP                           private(tem,tem1)
      do k=1,kmax
         if ( pm(k) < rf_cutoff ) then
+           tem = 1.0 / (1.0+rf(k))
 #ifdef HIWPP
            if (.not. hydrostatic) then
               do j=js,je
                  do i=is,ie
-                    w(i,j,k) = w(i,j,k)/(1.+rf(k))
+                    w(i,j,k) = w(i,j,k) * tem
                  enddo
               enddo
            endif
              do j=js,je+1
                 do i=is,ie
-                   u(i,j,k) = (u(i,j,k)+rf(k)*u00(i,j,k))/(1.+rf(k))
+                   u(i,j,k) = (u(i,j,k)+rf(k)*u00(i,j,k)) * tem
                 enddo
              enddo
              do j=js,je
                 do i=is,ie+1
-                   v(i,j,k) = (v(i,j,k)+rf(k)*v00(i,j,k))/(1.+rf(k))
+                   v(i,j,k) = (v(i,j,k)+rf(k)*v00(i,j,k)) * tem
                 enddo
              enddo
 #else
 ! Add heat so as to conserve TE
           if ( conserve ) then
              if ( hydrostatic ) then
+               tem1 = 0.5 * (1.0-tem*tem) / (cp-rg*ptop/pm(k))
                do j=js,je
                   do i=is,ie
-                     pt(i,j,k) = pt(i,j,k) + 0.5*(ua(i,j,k)**2+va(i,j,k)**2)*(1.-u2f(i,j,k)**2)/(cp-rg*ptop/pm(k))
+                     pt(i,j,k) = pt(i,j,k) + tem1 * (ua(i,j,k)*ua(i,j,k)+va(i,j,k)*va(i,j,k))
+!                    pt(i,j,k) = pt(i,j,k) + 0.5*(ua(i,j,k)**2+va(i,j,k)**2)*(1.-u2f(i,j,k)**2)/(cp-rg*ptop/pm(k))
                   enddo
                enddo
              else
+               tem1 = 0.5 * (1.0-tem*tem) * rcv
                do j=js,je
                   do i=is,ie
-                     pt(i,j,k) = pt(i,j,k) + 0.5*(ua(i,j,k)**2+va(i,j,k)**2+w(i,j,k)**2)*(1.-u2f(i,j,k)**2)*rcv
+                     pt(i,j,k) = pt(i,j,k) + tem1 * (ua(i,j,k)*ua(i,j,k)+va(i,j,k)*va(i,j,k)+w(i,j,k)*w(i,j,k))
+!                    pt(i,j,k) = pt(i,j,k) + 0.5*(ua(i,j,k)**2+va(i,j,k)**2+w(i,j,k)**2)*(1.-u2f(i,j,k)**2)*rcv
                   enddo
                enddo
              endif
@@ -1230,18 +1238,21 @@ contains
 
              do j=js,je+1
                 do i=is,ie
-                   u(i,j,k) = 0.5*(u2f(i,j-1,k)+u2f(i,j,k))*u(i,j,k)
+                   u(i,j,k) = tem * u(i,j,k)
+!                  u(i,j,k) = 0.5*(u2f(i,j-1,k)+u2f(i,j,k))*u(i,j,k)
                 enddo
              enddo
              do j=js,je
                 do i=is,ie+1
-                   v(i,j,k) = 0.5*(u2f(i-1,j,k)+u2f(i,j,k))*v(i,j,k)
+                   v(i,j,k) = tem * v(i,j,k)
+!                  v(i,j,k) = 0.5*(u2f(i-1,j,k)+u2f(i,j,k))*v(i,j,k)
                 enddo
              enddo
           if ( .not. hydrostatic ) then
              do j=js,je
                 do i=is,ie
-                   w(i,j,k) = u2f(i,j,k)*w(i,j,k)
+                   w(i,j,k) = tem * w(i,j,k)
+!                  w(i,j,k) = u2f(i,j,k)*w(i,j,k)
                 enddo
              enddo
           endif
@@ -1249,12 +1260,12 @@ contains
         endif
      enddo
 
-     deallocate ( u2f )
+!    deallocate ( u2f )
 
  end subroutine Rayleigh_Super
 
 
- subroutine Rayleigh_Friction(dt, npx, npy, npz, ks, pm, tau, u, v, w, pt,  &
+ subroutine Rayleigh_Friction(dt, npx, npy, npz, ks, pm, tau, u, v, w, pt,       &
                               ua, va, delz, cp, rg, ptop, hydrostatic, conserve, &
                               rf_cutoff, gridstruct, domain, bd)
     real, intent(in):: dt
@@ -1284,7 +1295,7 @@ contains
     integer :: is,  ie,  js,  je
     integer :: isd, ied, jsd, jed
 
-    
+
     is  = bd%is
     ie  = bd%ie
     js  = bd%js
