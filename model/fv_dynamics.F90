@@ -1202,7 +1202,8 @@ contains
           do k=1, npz
              if ( pm(k) < rf_cutoff ) then
                  if ( tau < 0 ) then ! GSM formula
-                  rf(k) = dt/tau0*( log(rf_cutoff/pm(k)) )**2
+!                 rf(k) = dt/tau0*( log(rf_cutoff/pm(k)) )**2
+                  rf(k) = dt/tau0 * log(rf_cutoff/pm(k))
                  else
                   rf(k) = dt/tau0*sin(0.5*pi*log(rf_cutoff/pm(k))/log(rf_cutoff/ptop))**2
                  endif
