@@ -75,13 +75,13 @@ public  fv_subgrid_z, qsmith, neg_adj3, neg_adj2
   real, parameter:: tice = 273.16
 ! real, parameter:: c_ice = 2106.  !< \cite emanuel1994atmospheric table, page 566
   real, parameter:: c_ice = 1972.  !<  -15 C
-  real, parameter:: c_liq = 4.1855e+3    !< GFS
-! real, parameter:: c_liq = 4218.        !< ECMWF-IFS
+  real, parameter:: c_liq = 4.1855e+3          !< GFS
+! real, parameter:: c_liq = 4218.              !< ECMWF-IFS
   real, parameter:: cv_vap = cp_vapor - rvgas  !< 1384.5
   real, parameter:: c_con = c_ice
 
 ! real, parameter:: dc_vap =  cp_vapor - c_liq   ! = -2368.
-  real, parameter:: dc_vap =  cv_vap - c_liq   !< = -2368.
+  real, parameter:: dc_vap =  cv_vap - c_liq     !< = -2368.
   real, parameter:: dc_ice =  c_liq - c_ice      !< = 2112.
 ! Values at 0 Deg C
   real, parameter:: hlv0 = 2.5e6
@@ -218,15 +218,10 @@ contains
 
 !$OMP parallel do default(none) shared(is,ie,js,je,nq,kbot,qa,ta,sphum,ua,va,delp,peln,      &
 !$OMP                                  hydrostatic,pe,delz,g2,w,liq_wat,rainwat,ice_wat,     &
-!$OMP                                  snowwat,cv_air,graupel,pkz,rk,rz,fra, t_max, t_min, &
-!!$OMP                                  snowwat,cv_air,m,graupel,pkz,rk,rz,fra, t_max, t_min, &
+!$OMP                                  snowwat,cv_air,graupel,pkz,rk,rz,fra, t_max, t_min,   &
 !$OMP                                  ratio,                                                &
-#ifdef MULTI_GASES
-!$OMP                                  u_dt,rdt,v_dt,xvir,nwat,km) &
-#else
 !$OMP                                  u_dt,rdt,v_dt,xvir,nwat)                              &
-#endif
-!$OMP                          private(kk,lcp2,icp2,tcp3,dh,dq,den,qs,qsw,dqsdt,qcon,q0,     &
+!$OMP                          private(kk,lcp2,icp2,tcp3,dh,dq,    qs,qsw,dqsdt,qcon,q0,     &
 !$OMP                                  t0,u0,v0,w0,h0,pm,gzh,tvm,tmp,cpm,cvm,q_liq,q_sol,    &
 #ifdef MULTI_GASES
 !$OMP                                  rkx,rdx,rzx,c_air,                                    &
@@ -265,7 +260,7 @@ contains
        do k=kbot, 1,-1
           do i=is,ie
                 tv  = rdgas*tvm(i,k)
-           den(i,k) = pm(i,k)/tv
+!          den(i,k) = pm(i,k)/tv
             gz(i,k) = gzh(i) + tv*(one-pe(i,k,j)/pm(i,k))
             hd(i,k) = cp_air*tvm(i,k)+gz(i,k)+half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k))
              gzh(i) = gzh(i) + tv*(peln(i,k+1,j)-peln(i,k,j))
@@ -273,19 +268,24 @@ contains
        enddo
     else
 
+      do k=kbot, 1, -1
+        do i=is,ie
+!         den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
+          w0(i,k)  = w(i,j,k)
+          gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
+           gzh(i)  = gzh(i) - grav*delz(i,j,k)
+        enddo
+      enddo
+
 #ifdef MULTI_GASES
       if ( nwat == 0 ) then
         do k=kbot, 1, -1
           do i=is,ie
             cpm      = cp_air*vicpqd(q0(i,k,:))
             cvm      = cv_air*vicvqd(q0(i,k,:))
-!           den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            tmp      = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
             hd(i,k)  = cpm*t0(i,k) + tmp
             te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
           enddo
         enddo
       elseif ( nwat==1 ) then
@@ -295,31 +295,23 @@ contains
             cpm     = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor
             cvm     = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap
 !
-           den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k) = w(i,j,k)
-            gz(i,k) = gzh(i)  - g2*delz(i,j,k)
-               tmp  = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
             hd(i,k) = cpm*t0(i,k) + tmp
             te(i,k) = cvm*t0(i,k) + tmp
-             gzh(i) = gzh(i) - grav*delz(i,j,k)
           enddo
         enddo
       elseif ( nwat==2 ) then   ! old GFS (with Zhao-Carr microphysics)
         do k=kbot, 1, -1
           do i=is,ie
-            tx1      = one / (one - q0(i,k,nwat))
-            c_air    = cp_air*vicpqd(q0(i,k,:))
-            cpm      = c_air + (cp_vapor-c_air)*q0(i,k,sphum) * tx1
-            c_air    = cv_air*vicvqd(q0(i,k,:))
-            cvm      = c_air + (cv_vap-c_air)*q0(i,k,sphum) * tx1
+            tx1     = one / (one - q0(i,k,nwat))
+            c_air   = cp_air*vicpqd(q0(i,k,:))
+            cpm     = c_air + (cp_vapor-c_air)*q0(i,k,sphum) * tx1
+            c_air   = cv_air*vicvqd(q0(i,k,:))
+            cvm     = c_air + (cv_vap-c_air)*q0(i,k,sphum) * tx1
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==3 ) then
@@ -331,13 +323,9 @@ contains
             cpm   = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==4 ) then
@@ -349,13 +337,9 @@ contains
             cpm   = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==5 ) then
@@ -367,13 +351,9 @@ contains
             cpm   = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       else
@@ -385,13 +365,9 @@ contains
             cpm   = tx1*cp_air*vicpqd(q0(i,k,:)) + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air*vicvqd(q0(i,k,:)) + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       endif
@@ -403,13 +379,9 @@ contains
             cpm = cp_air
             cvm = cv_air
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==1 ) then
@@ -419,13 +391,9 @@ contains
             cpm = tx1*cp_air + q0(i,k,sphum)*cp_vapor
             cvm = tx1*cv_air + q0(i,k,sphum)*cv_vap
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==2 ) then   ! old GFS (with Zhao-Carr microphysics)
@@ -435,13 +403,9 @@ contains
             cpm = tx1*cp_air + q0(i,k,sphum)*cp_vapor
             cvm = tx1*cv_air + q0(i,k,sphum)*cv_vap
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-             w0(i,k) = w(i,j,k)
-             gz(i,k) = gzh(i)  - g2*delz(i,j,k)
-                tmp  = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+             tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
              hd(i,k) = cpm*t0(i,k) + tmp
              te(i,k) = cvm*t0(i,k) + tmp
-              gzh(i) = gzh(i) - grav*delz(i,j,k)
           enddo
         enddo
       elseif ( nwat==3 ) then
@@ -453,13 +417,9 @@ contains
             cpm   = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==4 ) then
@@ -471,13 +431,9 @@ contains
             cpm   = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       elseif ( nwat==5 ) then
@@ -489,13 +445,9 @@ contains
             cpm   = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       else
@@ -507,13 +459,9 @@ contains
             cpm   = tx1*cp_air + q0(i,k,sphum)*cp_vapor + q_liq*c_liq + q_sol*c_ice
             cvm   = tx1*cv_air + q0(i,k,sphum)*cv_vap   + q_liq*c_liq + q_sol*c_ice
 !
-            den(i,k) = -delp(i,j,k)/(grav*delz(i,j,k))
-            w0(i,k)  = w(i,j,k)
-            gz(i,k)  = gzh(i)  - g2*delz(i,j,k)
-               tmp   = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
-            hd(i,k)  = cpm*t0(i,k) + tmp
-            te(i,k)  = cvm*t0(i,k) + tmp
-             gzh(i)  = gzh(i) - grav*delz(i,j,k)
+            tmp     = gz(i,k) + half*(u0(i,k)*u0(i,k)+v0(i,k)*v0(i,k)+w0(i,k)*w0(i,k))
+            hd(i,k) = cpm*t0(i,k) + tmp
+            te(i,k) = cvm*t0(i,k) + tmp
           enddo
         enddo
       endif
