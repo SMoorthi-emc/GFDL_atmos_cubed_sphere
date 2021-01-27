@@ -1,22 +1,21 @@
-
 !***********************************************************************
-!*                   GNU Lesser General Public License                 
+!*                   GNU Lesser General Public License
 !*
 !* This file is part of the FV3 dynamical core.
 !*
-!* The FV3 dynamical core is free software: you can redistribute it 
+!* The FV3 dynamical core is free software: you can redistribute it
 !* and/or modify it under the terms of the
 !* GNU Lesser General Public License as published by the
-!* Free Software Foundation, either version 3 of the License, or 
+!* Free Software Foundation, either version 3 of the License, or
 !* (at your option) any later version.
 !*
-!* The FV3 dynamical core is distributed in the hope that it will be 
-!* useful, but WITHOUT ANYWARRANTY; without even the implied warranty 
-!* of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+!* The FV3 dynamical core is distributed in the hope that it will be
+!* useful, but WITHOUT ANYWARRANTY; without even the implied warranty
+!* of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 !* See the GNU General Public License for more details.
 !*
 !* You should have received a copy of the GNU Lesser General Public
-!* License along with the FV3 dynamical core.  
+!* License along with the FV3 dynamical core.
 !* If not, see <http://www.gnu.org/licenses/>.
 !***********************************************************************
 
@@ -69,7 +68,7 @@ module nh_utils_mod
    real, parameter:: dz_min = 6.
    real, parameter:: r3 = 1./3.
 
-CONTAINS 
+CONTAINS
 
   subroutine update_dz_c(is, ie, js, je, km, ng, dt, dp0, zs, area, ut, vt, gz, ws, &
        npx, npy, sw_corner, se_corner, ne_corner, nw_corner, bd, grid_type)
@@ -345,7 +344,7 @@ CONTAINS
 #endif
    real, intent(in)::   hs(is-ng:ie+ng,js-ng:je+ng)
    real, intent(in), dimension(is-ng:ie+ng,js-ng:je+ng,km):: w3
-! OUTPUT PARAMETERS 
+! OUTPUT PARAMETERS
    real, intent(inout), dimension(is-ng:ie+ng,js-ng:je+ng,km+1):: gz
    real, intent(  out), dimension(is-ng:ie+ng,js-ng:je+ng,km+1):: pef
 ! Local:
@@ -470,13 +469,13 @@ CONTAINS
 !>GFDL - This routine will not give absoulte reproducibility when compiled with -fast-transcendentals.
 !! GFDL - It is now inside of nh_core.F90 and being compiled without -fast-transcendentals.
   subroutine Riem_Solver3test(ms, dt,   is,   ie,   js, je, km, ng,    &
-                          isd, ied, jsd, jed, akap, cappa, cp,     &
+                          isd, ied, jsd, jed, akap, cappa, cp,         &
 #ifdef MULTI_GASES
                           kapad, &
 #endif
-                          ptop, zs, q_con, w,  delz, pt,  &
+                          ptop, zs, q_con, w,  delz, pt,    &
                           delp, zh, pe, ppe, pk3, pk, peln, &
-                          ws, scale_m,  p_fac, a_imp, &
+                          ws, scale_m,  p_fac, a_imp,       &
                           use_logp, last_call, fp_out)
 !--------------------------------------------
 ! !OUTPUT PARAMETERS
@@ -1743,7 +1742,7 @@ CONTAINS
  real, intent(out), dimension(i1:i2,km+1):: qe
 !-----------------------------------------------------------------------
  real, parameter:: r2o3 = 2./3.
- real, parameter:: r4o3 = 4./3. 
+ real, parameter:: r4o3 = 4./3.
  real  gak(km)
  real  bet
  integer i, k
@@ -2042,8 +2041,8 @@ subroutine nh_BC_k(ptop, grav, kappa, cp, delp, delzBC_t0, delzBC_t1, pt, phis, 
       cappa, &
 #endif
 #endif
-      pkc, gz, pk3, &
-      BC_step, BC_split, &      
+      pkc, gz, pk3,      &
+      BC_step, BC_split, &
       pkc_pertn, computepk3, isd, ied, isd_BC, ied_BC, istart, iend, jsd, jed, jstart, jend, npz)
 
    integer, intent(IN) :: isd, ied, isd_BC, ied_BC, istart, iend, jsd, jed, jstart, jend, npz
@@ -2099,7 +2098,7 @@ subroutine nh_BC_k(ptop, grav, kappa, cp, delp, delzBC_t0, delzBC_t1, pt, phis, 
       enddo
       do k=npz,1,-1
          do i=istart,iend
-            delz_int = (delzBC_t0(i,j,k)*(BC_split-BC_step) + BC_step*delzBC_t1(i,j,k))*denom            
+            delz_int = (delzBC_t0(i,j,k)*(BC_split-BC_step) + BC_step*delzBC_t1(i,j,k))*denom
             gz(i,j,k) = gz(i,j,k+1) - delz_int*grav
          enddo
       enddo
