@@ -534,7 +534,7 @@ contains
 !
           ri = (gz(i,km1)-gz(i,k))*(pt1-pt2)/( 0.5*(pt1+pt2)*        &
                ((u0(i,km1)-u0(i,k))**2+(v0(i,km1)-v0(i,k))**2+ustar2) )
-          if ( tv1 > t_max .and. tv1 > tv2 .and. pe(i,k,j) > 0.2) then
+          if ( tv1 > t_max .and. tv1 > tv2 .and. pm(i,km1) > 0.2) then
 ! top layer unphysically warm
              ri = zero
           elseif ( tv2<t_min ) then
@@ -544,7 +544,8 @@ contains
 ! Compute equivalent mass flux: mc
 ! Add moist 2-dz instability consideration:
 !!!       ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
-          ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(400.e2,pm(i,k))/200.e2 )
+!Moor     ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(400.e2,pm(i,k))/200.e2 )
+          ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(200.e2,pm(i,k))/100.e2 )
 ! Enhancing mixing at the model top
           if ( k==2 ) then
                ri_ref = 4.*ri_ref
