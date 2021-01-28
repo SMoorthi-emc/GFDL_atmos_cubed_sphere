@@ -906,19 +906,18 @@ contains
             m_fac(i,j) = u0*cos(gridstruct%agrid(i,j,2))
          enddo
       enddo
-!$OMP parallel do default(none) shared(is,ie,js,je,npz,hydrostatic,pt,m_fac,ua,cp_air, &
-!$OMP                                  u,u0,gridstruct,v )
+!$OMP parallel do default(none) shared(is,ie,js,je,npz,u,u0,gridstruct,v )
       do k=1,npz
-      do j=js,je+1
-         do i=is,ie
+        do j=js,je+1
+          do i=is,ie
             u(i,j,k) = u(i,j,k) + u0*gridstruct%l2c_u(i,j)
-         enddo
-      enddo
-      do j=js,je
-         do i=is,ie+1
+          enddo
+        enddo
+        do j=js,je
+          do i=is,ie+1
             v(i,j,k) = v(i,j,k) + u0*gridstruct%l2c_v(i,j)
-         enddo
-      enddo
+          enddo
+        enddo
       enddo
     endif   !  consv_am
   endif

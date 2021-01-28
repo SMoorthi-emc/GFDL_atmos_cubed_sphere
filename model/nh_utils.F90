@@ -65,18 +65,17 @@ module nh_utils_mod
    public sim3p0_solver, rim_2d
    public Riem_Solver_c
 
-   real, parameter:: dz_min = 6.
    real, parameter:: r3 = 1./3.
 
 CONTAINS
 
   subroutine update_dz_c(is, ie, js, je, km, ng, dt, dp0, zs, area, ut, vt, gz, ws, &
-       npx, npy, sw_corner, se_corner, ne_corner, nw_corner, bd, grid_type)
+       npx, npy, sw_corner, se_corner, ne_corner, nw_corner, bd, grid_type, dz_min)
 ! !INPUT PARAMETERS:
   type(fv_grid_bounds_type), intent(IN) :: bd
   integer, intent(in):: is, ie, js, je, ng, km, npx, npy, grid_type
   logical, intent(IN):: sw_corner, se_corner, ne_corner, nw_corner
-  real, intent(in):: dt
+  real, intent(in):: dt, dz_min
   real, intent(in):: dp0(km)
   real, intent(in), dimension(is-ng:ie+ng,js-ng:je+ng,km):: ut, vt
   real, intent(in), dimension(is-ng:ie+ng,js-ng:je+ng):: area
@@ -111,7 +110,7 @@ CONTAINS
 !$OMP parallel do default(none) shared(js1,je1,is1,ie2,km,je2,ie1,ut,top_ratio,vt, &
 !$OMP                                  bot_ratio,dp0,js,je,ng,is,ie,gz,grid_type,  &
 !$OMP                                  bd,npx,npy,sw_corner,se_corner,ne_corner,   &
-!$OMP                                  nw_corner,area) &
+!$OMP                                  nw_corner,area)                             &
 !$OMP                          private(gz2, xfx, yfx, fx, fy, int_ratio)
   do 6000 k=1,km+1
 
@@ -195,7 +194,7 @@ CONTAINS
 6000 continue
 
 ! Enforce monotonicity of height to prevent blowup
-!$OMP parallel do default(none) shared(is1,ie1,js1,je1,ws,zs,gz,rdt,km)
+!$OMP parallel do default(none) shared(is1,ie1,js1,je1,ws,zs,gz,rdt,km,dz_min)
   do j=js1, je1
      do k=km, 1, -1
         do i=is1, ie1
@@ -211,12 +210,12 @@ CONTAINS
 
 
   subroutine update_dz_d(ndif, damp, hord, is, ie, js, je, km, ng, npx, npy, area, rarea,   &
-                         dp0, zs, zh, crx, cry, xfx, yfx, ws, rdt, gridstruct, bd, lim_fac)
+                         dp0, zs, zh, crx, cry, xfx, yfx, ws, rdt, gridstruct, bd, lim_fac, dz_min, psm_bc)
 
   type(fv_grid_bounds_type), intent(IN) :: bd
   integer, intent(in):: is, ie, js, je, ng, km, npx, npy
-  integer, intent(in):: hord
-  real, intent(in)   :: rdt
+  integer, intent(in):: hord, psm_bc
+  real, intent(in)   :: rdt, dz_min
   real, intent(in)   :: dp0(km)
   real, intent(in)   :: area(is-ng:ie+ng,js-ng:je+ng)
   real, intent(in)   :: rarea(is-ng:ie+ng,js-ng:je+ng)
@@ -252,15 +251,27 @@ CONTAINS
   isd = is - ng;  ied = ie + ng
   jsd = js - ng;  jed = je + ng
 
-!$OMP parallel do default(none) shared(jsd,jed,crx,xfx,crx_adv,xfx_adv,is,ie,isd,ied, &
+  if (psm_bc == 0 )then
+!$OMP parallel do default(none) shared(jsd,jed,crx,xfx,crx_adv,xfx_adv,is,ie,isd,ied,     &
 !$OMP                                  km,dp0,uniform_grid,js,je,cry,yfx,cry_adv,yfx_adv)
-  do j=jsd,jed
-     call edge_profile(crx, xfx, crx_adv, xfx_adv, is,  ie+1, jsd, jed, j, km, &
+      do j=jsd,jed
+           call edge_profile(crx, xfx, crx_adv, xfx_adv, is,  ie+1, jsd, jed, j, km, &
                             dp0, uniform_grid, 0)
-     if ( j<=je+1 .and. j>=js )      &
-     call edge_profile(cry, yfx, cry_adv, yfx_adv, isd, ied,  js, je+1, j, km, &
+           if ( j<=je+1 .and. j>=js )      &
+           call edge_profile(cry, yfx, cry_adv, yfx_adv, isd, ied,  js, je+1, j, km, &
                             dp0, uniform_grid, 0)
-  enddo
+      enddo
+  else
+!$OMP parallel do default(none) shared(jsd,jed,crx,xfx,crx_adv,xfx_adv,is,ie,isd,ied,     &
+!$OMP                                  km,dp0,uniform_grid,js,je,cry,yfx,cry_adv,yfx_adv)
+      do j=jsd,jed
+           call edge_profile_0grad(crx, xfx, crx_adv, xfx_adv, is,  ie+1, jsd, jed, j, km, &
+                            dp0, uniform_grid, 0)
+           if ( j<=je+1 .and. j>=js )      &
+           call edge_profile_0grad(cry, yfx, cry_adv, yfx_adv, isd, ied,  js, je+1, j, km, &
+                            dp0, uniform_grid, 0)
+      enddo
+  endif
 
 !$OMP parallel do default(none) shared(is,ie,js,je,isd,ied,jsd,jed,km,area,xfx_adv,yfx_adv, &
 !$OMP                                  damp,zh,crx_adv,cry_adv,npx,npy,hord,gridstruct,bd,  &
@@ -309,7 +320,7 @@ CONTAINS
 
   enddo
 
-!$OMP parallel do default(none) shared(is,ie,js,je,km,ws,zs,zh,rdt)
+!$OMP parallel do default(none) shared(is,ie,js,je,km,ws,zs,zh,rdt,dz_min)
   do j=js, je
      do k=km, 1, -1
         do i=is, ie
@@ -344,7 +355,7 @@ CONTAINS
 #endif
    real, intent(in)::   hs(is-ng:ie+ng,js-ng:je+ng)
    real, intent(in), dimension(is-ng:ie+ng,js-ng:je+ng,km):: w3
-! OUTPUT PARAMETERS
+! OUTPUT PARAMETERS 
    real, intent(inout), dimension(is-ng:ie+ng,js-ng:je+ng,km+1):: gz
    real, intent(  out), dimension(is-ng:ie+ng,js-ng:je+ng,km+1):: pef
 ! Local:
@@ -768,7 +779,7 @@ CONTAINS
   integer:: i, k, n, ke, kt1, ktop
   integer:: ks0, ks1
 
-  grg = gama * rgas  
+  grg = gama * rgas
   rdt = 1. / bdt
   dt = bdt / real(ms)
 
@@ -924,7 +935,7 @@ CONTAINS
             m_top(ke) = m_top(ke) + z_frac*dm(k)
             r_top(ke) = r_top(ke) + z_frac*r_hi(k)
             go to 444     ! next level
-        endif 
+        endif
      enddo
 444 continue
 
@@ -1524,7 +1535,7 @@ CONTAINS
           p1(i) = (pe(i,k) + bb(i,k)*pe(i,k+1) + g_rat(i,k)*pe(i,k+2))*r3 - g_rat(i,k)*p1(i)
 #ifdef MOIST_CAPPA
           dz2(i,k) = -dm2(i,k)*rgas*pt2(i,k)*exp((cp2(i,k)-1.)*log(max(p_fac*pm2(i,k),p1(i)+pm2(i,k))))
-      
+ 
 #else
 #ifdef MULTI_GASES
           capa1x = kapad2(i,k)-1.
@@ -1891,6 +1902,118 @@ CONTAINS
     enddo
 
  end subroutine edge_profile
+
+ subroutine edge_profile_0grad(q1, q2, q1e, q2e, i1, i2, j1, j2, j, km, dp0, uniform_grid, limiter)
+! Optimized for wind profile reconstruction:
+! Added this option by Henry Juang and Xiaqiong Zhou 1/21/2021
+ integer, intent(in):: i1, i2, j1, j2
+ integer, intent(in):: j, km
+ integer, intent(in):: limiter
+ logical, intent(in):: uniform_grid
+ real, intent(in):: dp0(km)
+ real, intent(in),  dimension(i1:i2,j1:j2,km):: q1, q2
+ real, intent(out), dimension(i1:i2,j1:j2,km+1):: q1e, q2e
+!-----------------------------------------------------------------------
+ real, dimension(i1:i2,km+1):: qe1, qe2, gam  ! edge values
+ real  gak(km)
+ real  bet, r2o3, r4o3
+ real  g0, gk, xt1, xt2, a_bot
+ integer i, k
+
+ if ( uniform_grid ) then
+!------------------------------------------------
+! Optimized coding for uniform grid: SJL Apr 2007
+!------------------------------------------------
+     r2o3 = 2./3.
+     r4o3 = 4./3.
+     do i=i1,i2
+        qe1(i,1) = r4o3*q1(i,j,1) + r2o3*q1(i,j,2)
+        qe2(i,1) = r4o3*q2(i,j,1) + r2o3*q2(i,j,2)
+     enddo
+
+        gak(1) = 7./3.
+     do k=2,km
+        gak(k) =  1. / (4. - gak(k-1))
+        do i=i1,i2
+           qe1(i,k) = (3.*(q1(i,j,k-1) + q1(i,j,k)) - qe1(i,k-1)) * gak(k)
+           qe2(i,k) = (3.*(q2(i,j,k-1) + q2(i,j,k)) - qe2(i,k-1)) * gak(k)
+        enddo
+     enddo
+
+     bet = 1. / (1.5 - 3.5*gak(km))
+     do i=i1,i2
+        qe1(i,km+1) = (4.*q1(i,j,km) + q1(i,j,km-1) - 3.5*qe1(i,km)) * bet
+        qe2(i,km+1) = (4.*q2(i,j,km) + q2(i,j,km-1) - 3.5*qe2(i,km)) * bet
+     enddo
+
+     do k=km,1,-1
+        do i=i1,i2
+           qe1(i,k) = qe1(i,k) - gak(k)*qe1(i,k+1)
+           qe2(i,k) = qe2(i,k) - gak(k)*qe2(i,k+1)
+        enddo
+     enddo
+ else
+! Assuming grid varying in vertical only
+   g0 = dp0(1) / dp0(2)
+   bet = 1.5 + 2.*g0
+   do i=i1,i2
+      qe1(i,2) = 3.*( 0.5*q1(i,j,1) + g0*q1(i,j,2) ) / bet
+      qe2(i,2) = 3.*( 0.5*q2(i,j,1) + g0*q2(i,j,2) ) / bet
+      gam(i,1) =  g0/bet
+   enddo
+
+
+! for k=2,km
+  do k=2,km-1
+        gk = dp0(k) / dp0(k+1)
+     do i=i1,i2
+        bet =  2. + 2.*gk - gam(i,k-1)
+        qe1(i,k+1) = ( 3.*(q1(i,j,k)+gk*q1(i,j,k+1)) - qe1(i,k) ) / bet
+        qe2(i,k+1) = ( 3.*(q2(i,j,k)+gk*q2(i,j,k+1)) - qe2(i,k) ) / bet
+        gam(i,k) = gk / bet
+     enddo
+  enddo
+
+!km+1
+  do i=i1,i2
+     bet = 2.- gam(i,km-1)
+     qe1(i,km+1) = ( 3.*q1(i,j,km) - qe1(i,km) ) / bet
+     qe2(i,km+1) = ( 3.*q2(i,j,km) - qe2(i,km) ) / bet
+  enddo
+
+  do i=i1,i2
+     do k=km,2,-1
+        qe1(i,k) = qe1(i,k) - gam(i,k-1)*qe1(i,k+1)
+        qe2(i,k) = qe2(i,k) - gam(i,k-1)*qe2(i,k+1)
+     enddo
+     qe1(i,1)=1.5*q1(i,j,1)-0.5*qe1(i,2)
+     qe2(i,1)=1.5*q2(i,j,1)-0.5*qe2(i,2)
+  enddo
+
+ endif
+
+!------------------
+! Apply constraints
+!------------------
+    if ( limiter/=0 ) then   ! limit the top & bottom winds
+         do i=i1,i2
+! Top
+            if ( q1(i,j,1)*qe1(i,1) < 0. ) qe1(i,1) = 0.
+            if ( q2(i,j,1)*qe2(i,1) < 0. ) qe2(i,1) = 0.
+! Surface:
+            if ( q1(i,j,km)*qe1(i,km+1) < 0. ) qe1(i,km+1) = 0.
+            if ( q2(i,j,km)*qe2(i,km+1) < 0. ) qe2(i,km+1) = 0.
+         enddo
+    endif
+
+    do k=1,km+1
+       do i=i1,i2
+          q1e(i,j,k) = qe1(i,k)
+          q2e(i,j,k) = qe2(i,k)
+       enddo
+    enddo
+
+ end subroutine edge_profile_0grad
 
 !TODO LMH 25may18: do not need delz defined on full compute domain; pass appropriate BCs instead
  subroutine nh_bc(ptop, grav, kappa, cp, delp, delzBC, pt, phis, &
