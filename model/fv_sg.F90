@@ -152,6 +152,7 @@ contains
       integer i, j, k, kk, n,    iq, km1,     kbot, l
 !     integer i, j, k, kk, n, m, iq, km1, im, kbot, l
       real, parameter:: ustar2 = 1.E-4
+      real, parameter:: pbot = 200.0e2, pdepth=100.0e2
       real:: cv_air, xvir
       integer :: sphum, liq_wat, rainwat, snowwat, graupel, ice_wat, cld_amt
 
@@ -545,7 +546,8 @@ contains
 ! Add moist 2-dz instability consideration:
 !!!       ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
 !Moor     ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(400.e2,pm(i,k))/200.e2 )
-          ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(200.e2,pm(i,k))/100.e2 )
+!         ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(200.e2,pm(i,k))/100.e2 )
+          ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(pbot,pm(i,k))/pdepth )
 ! Enhancing mixing at the model top
           if ( k==2 ) then
                ri_ref = 4.*ri_ref
