@@ -658,7 +658,10 @@ contains
         nt_dyn = nq - 1
       endif
       call fv_subgrid_z(isd, ied, jsd, jed, isc, iec, jsc, jec, Atm(n)%npz, &
-                        nt_dyn, dt_atmos, Atm(n)%flagstruct%fv_sg_adj,      &
+                        nt_dyn, dt_atmos,                                   &
+                        Atm(n)%flagstruct%fv_sg_pbot,                       &
+                        Atm(n)%flagstruct%fv_sg_pdepth,                     &
+                        Atm(n)%flagstruct%fv_sg_adj,                        &
                         Atm(n)%flagstruct%nwat, Atm(n)%delp, Atm(n)%pe,     &
                         Atm(n)%peln, Atm(n)%pkz, Atm(n)%pt, Atm(n)%q,       &
                         Atm(n)%ua, Atm(n)%va, Atm(n)%flagstruct%hydrostatic,&

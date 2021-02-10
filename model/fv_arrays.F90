@@ -709,6 +709,9 @@ module fv_arrays_mod
 
    real    :: sg_cutoff = -1   !< cutoff level for fv_sg_adj (2dz filter; overrides n_sponge)
 
+   real    :: fv_sg_pbot = 400.0e2   !< pressure level below with ri_ref=ri_min in 2dz filter
+   real    :: fv_sg_pdepth = 200.0e2 !< pressure depth over which ri_ref varies between ri_max and ri_min
+
    integer :: na_init = 0   !< Number of forward-backward dynamics steps used to initialize
                             !< adiabatic solver. This is useful for spinning up the nonhydrostatic
                             !< state from the hydrostatic GFS analyses. 0 by default. Recommended
@@ -991,7 +994,7 @@ module fv_arrays_mod
                                            !< at the center of the domain (the center of tile 1), if set to .true.
                                            !< The default value is .false.
 
-   real    :: dz_min = 6     !< Minimum thickness depth to enforce monotonicity of height to prevent blowup.
+   real    :: dz_min = 2.0   !< Minimum thickness depth to enforce monotonicity of height to prevent blowup.
                              !< 6 by default
 
    integer :: psm_bc = 0     !< Option to use origional BCs (0) or zero-gradient BCs (1)

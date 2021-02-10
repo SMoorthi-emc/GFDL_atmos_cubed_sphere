@@ -111,6 +111,7 @@ contains
 !!-one for the GFS physics
 !!-one for the GFDL physics
  subroutine fv_subgrid_z(isd, ied, jsd, jed, is, ie, js, je, km, nq, dt,  &
+                         pbot, pdepth,                                    &
                          tau, nwat, delp, pe, peln, pkz, ta, qa, ua, va,  &
                          hydrostatic, w, delz, u_dt, v_dt, t_dt, k_bot )
 ! Dry convective adjustment-mixing
@@ -118,6 +119,9 @@ contains
       integer, intent(in):: is, ie, js, je, km, nq, nwat
       integer, intent(in):: isd, ied, jsd, jed
       integer, intent(in):: tau         !< Relaxation time scale
+
+      real,    intent(in):: pbot        !< pressure below which ri_rf is equal to ri_min
+      real,    intent(in):: pdepth      !< pressure depth over whith ri_res is between rim_min and ri_max
       real,    intent(in):: dt          !< model time step
       real,    intent(in)::   pe(is-1:ie+1,km+1,js-1:je+1) 
       real,    intent(in):: peln(is  :ie,  km+1,js  :je)
@@ -152,7 +156,7 @@ contains
       integer i, j, k, kk, n,    iq, km1,     kbot, l
 !     integer i, j, k, kk, n, m, iq, km1, im, kbot, l
       real, parameter:: ustar2 = 1.E-4
-      real, parameter:: pbot = 200.0e2, pdepth=100.0e2
+!     real, parameter:: pbot = 200.0e2, pdepth=100.0e2
       real:: cv_air, xvir
       integer :: sphum, liq_wat, rainwat, snowwat, graupel, ice_wat, cld_amt
 
@@ -220,7 +224,7 @@ contains
 !$OMP parallel do default(none) shared(is,ie,js,je,nq,kbot,qa,ta,sphum,ua,va,delp,peln,      &
 !$OMP                                  hydrostatic,pe,delz,g2,w,liq_wat,rainwat,ice_wat,     &
 !$OMP                                  snowwat,cv_air,graupel,pkz,rk,rz,fra, t_max, t_min,   &
-!$OMP                                  ratio,                                                &
+!$OMP                                  ratio, pbot, pdepth,                                  &
 !$OMP                                  u_dt,rdt,v_dt,xvir,nwat)                              &
 !$OMP                          private(kk,lcp2,icp2,tcp3,dh,dq,    qs,qsw,dqsdt,qcon,q0,     &
 !$OMP                                  t0,u0,v0,w0,h0,pm,gzh,tvm,tmp,cpm,cvm,q_liq,q_sol,    &
@@ -971,6 +975,7 @@ contains
 
 #else
  subroutine fv_subgrid_z( isd, ied, jsd, jed, is, ie, js, je, km, nq, dt,    &
+                         pbot, pdepth,                                    &
                          tau, nwat, delp, pe, peln, pkz, ta, qa, ua, va,     &
                          hydrostatic, w, delz, u_dt, v_dt, t_dt, q_dt, k_bot )
 ! Dry convective adjustment-mixing
@@ -978,6 +983,9 @@ contains
       integer, intent(in):: is, ie, js, je, km, nq, nwat
       integer, intent(in):: isd, ied, jsd, jed
       integer, intent(in):: tau         !< Relaxation time scale
+
+      real,    intent(in):: pbot        !< pressure below which ri_rf is equal to ri_min
+      real,    intent(in):: pdepth      !< pressure depth over whith ri_res is between rim_min and ri_max
       real, intent(in):: dt             !< model time step
       real, intent(in)::   pe(is-1:ie+1,km+1,js-1:je+1) 
       real, intent(in):: peln(is  :ie,  km+1,js  :je)
@@ -1049,14 +1057,15 @@ contains
    m = 3
    fra = dt/real(tau)
 
-!$OMP parallel do default(none) shared(im,is,ie,js,je,nq,kbot,qa,ta,sphum,ua,va,delp,peln,     &
-!$OMP                                  hydrostatic,pe,delz,g2,w,liq_wat,rainwat,ice_wat,  &
-!$OMP                                  snowwat,cv_air,m,graupel,pkz,rk,rz,fra,cld_amt,    &
-!$OMP                                  u_dt,rdt,v_dt,xvir,nwat)                 &
-!$OMP                          private(kk,lcp2,icp2,tcp3,dh,dq,den,qs,qsw,dqsdt,qcon,q0, &
-!$OMP                                  t0,u0,v0,w0,h0,pm,gzh,tvm,tmp,cpm,cvm, q_liq,q_sol,&
+!$OMP parallel do default(none) shared(im,is,ie,js,je,nq,kbot,qa,ta,sphum,ua,va,delp,peln,  &
+!$OMP                                  hydrostatic,pe,delz,g2,w,liq_wat,rainwat,ice_wat,    &
+!$OMP                                  snowwat,cv_air,m,graupel,pkz,rk,rz,fra,cld_amt,      &
+!$OMP                                  pbot, pdepth,                                        &
+!$OMP                                  u_dt,rdt,v_dt,xvir,nwat)                             &
+!$OMP                          private(kk,lcp2,icp2,tcp3,dh,dq,den,qs,qsw,dqsdt,qcon,q0,    &
+!$OMP                                  t0,u0,v0,w0,h0,pm,gzh,tvm,tmp,cpm,cvm, q_liq,q_sol,  &
 #ifdef MULTI_GASES
-!$OMP                                  rkx,rdx,rzx,c_air                                  &
+!$OMP                                  rkx,rdx,rzx,c_air                                    &
 #endif
 !$OMP                                  tv,gz,hd,te,ratio,pt1,pt2,tv1,tv2,ri_ref, ri,mc,km1)
   do 1000 j=js,je  
@@ -1273,7 +1282,8 @@ contains
 ! Adjustment for K-H instability:
 ! Compute equivalent mass flux: mc
 ! Add moist 2-dz instability consideration:
-            ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
+!           ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
+            ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(pbot,pm(i,k))/pdepth)
 #ifdef TEST_MQ
             if ( nwat > 0 ) then
                h0 = hd(i,k)-hd(i,km1) + hlv0*(q0(i,k,sphum)-qs(i))

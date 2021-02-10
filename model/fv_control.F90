@@ -305,6 +305,8 @@ module fv_control_mod
      integer , pointer :: nf_omega
      integer , pointer :: fv_sg_adj
      real    , pointer :: sg_cutoff
+     real    , pointer :: fv_sg_pbot
+     real    , pointer :: fv_sg_pdepth
 
      integer , pointer :: na_init
      logical , pointer :: nudge_dz
@@ -847,6 +849,8 @@ module fv_control_mod
        nf_omega                      => Atm%flagstruct%nf_omega
        fv_sg_adj                     => Atm%flagstruct%fv_sg_adj
        sg_cutoff                     => Atm%flagstruct%sg_cutoff
+       fv_sg_pbot                    => Atm%flagstruct%fv_sg_pbot
+       fv_sg_pdepth                  => Atm%flagstruct%fv_sg_pdepth
        na_init                       => Atm%flagstruct%na_init
        nudge_dz                      => Atm%flagstruct%nudge_dz
        p_ref                         => Atm%flagstruct%p_ref
@@ -1427,28 +1431,29 @@ module fv_control_mod
 !!
 !!
 !> @{
-       namelist /fv_core_nml/npx, npy, ntiles, npz, npz_type, npz_rst, layout, io_layout, ncnst, nwat,  &
-            use_logp, p_fac, a_imp, k_split, n_split, m_split, q_split, print_freq, write_3d_diags, &
-            do_schmidt, do_cube_transform, &
-            hord_mt, hord_vt, hord_tm, hord_dp, hord_tr, shift_fac, stretch_fac, target_lat, target_lon, &
-            kord_mt, kord_wz, kord_tm, kord_tr, fv_debug, fv_land, nudge, do_sat_adj, do_f3d, &
+       namelist /fv_core_nml/npx, npy, ntiles, npz, npz_type, npz_rst, layout, io_layout, ncnst, nwat,        &
+            use_logp, p_fac, a_imp, k_split, n_split, m_split, q_split, print_freq, write_3d_diags,           &
+            do_schmidt, do_cube_transform,                                                                    &
+            hord_mt, hord_vt, hord_tm, hord_dp, hord_tr, shift_fac, stretch_fac, target_lat, target_lon,      &
+            kord_mt, kord_wz, kord_tm, kord_tr, fv_debug, fv_land, nudge, do_sat_adj, do_f3d,                 &
             external_ic, read_increment, ncep_ic, nggps_ic, ecmwf_ic, use_new_ncep, use_ncep_phy, fv_diag_ic, &
-            external_eta, res_latlon_dynamics, res_latlon_tracers, scale_z, w_max, z_min, lim_fac, &
-            dddmp, d2_bg, d4_bg, vtdm4, trdm2, d_ext, delt_max, beta, non_ortho, n_sponge, &
-            warm_start, adjust_dry_mass, mountain, d_con, ke_bg, nord, nord_tr, convert_ke, use_old_omega, &
-            dry_mass, grid_type, do_Held_Suarez, do_reed_physics, reed_cond_only, &
-            consv_te, fill, filter_phys, fill_dp, fill_wz, fill_gfs, consv_am, RF_fast, &
-            range_warn, dwind_2d, inline_q, z_tracer, reproduce_sum, adiabatic, do_vort_damp, no_dycore,   &
-            tau, tau_h2o, rf_cutoff, nf_omega, hydrostatic, fv_sg_adj, sg_cutoff, breed_vortex_inline,  &
-            na_init, nudge_dz, hybrid_z, Make_NH, n_zs_filter, nord_zs_filter, full_zs_filter, reset_eta,         &
-            pnats, dnats, dnrts, a2b_ord, remap_t, p_ref, d2_bg_k1, d2_bg_k2,  &
-            c2l_ord, dx_const, dy_const, umax, deglat,      &
-            deglon_start, deglon_stop, deglat_start, deglat_stop, &
-            phys_hydrostatic, use_hydro_pressure, make_hybrid_z, old_divg_damp, add_noise, butterfly_effect, &
-            dz_min, psm_bc, nested, twowaynest, nudge_qv, &
-            nestbctype, nestupdate, nsponge, s_weight, &
-            check_negative, nudge_ic, halo_update_type, gfs_phil, agrid_vel_rst,     &
-            do_uni_zfull, adj_mass_vmr, fac_n_spl, fhouri, update_blend, regional, bc_update_interval,  &
+            external_eta, res_latlon_dynamics, res_latlon_tracers, scale_z, w_max, z_min, lim_fac,            &
+            dddmp, d2_bg, d4_bg, vtdm4, trdm2, d_ext, delt_max, beta, non_ortho, n_sponge,                    &
+            warm_start, adjust_dry_mass, mountain, d_con, ke_bg, nord, nord_tr, convert_ke, use_old_omega,    &
+            dry_mass, grid_type, do_Held_Suarez, do_reed_physics, reed_cond_only,                             &
+            consv_te, fill, filter_phys, fill_dp, fill_wz, fill_gfs, consv_am, RF_fast,                       &
+            range_warn, dwind_2d, inline_q, z_tracer, reproduce_sum, adiabatic, do_vort_damp, no_dycore,      &
+            tau, tau_h2o, rf_cutoff, nf_omega, hydrostatic, fv_sg_adj, sg_cutoff, fv_sg_pbot, fv_sg_pdepth,   &
+            breed_vortex_inline,                                                                              &
+            na_init, nudge_dz, hybrid_z, Make_NH, n_zs_filter, nord_zs_filter, full_zs_filter, reset_eta,     &
+            pnats, dnats, dnrts, a2b_ord, remap_t, p_ref, d2_bg_k1, d2_bg_k2,                                 &
+            c2l_ord, dx_const, dy_const, umax, deglat,                                                        &
+            deglon_start, deglon_stop, deglat_start, deglat_stop,                                             &
+            phys_hydrostatic, use_hydro_pressure, make_hybrid_z, old_divg_damp, add_noise, butterfly_effect,  &
+            dz_min, psm_bc, nested, twowaynest, nudge_qv,                                                     &
+            nestbctype, nestupdate, nsponge, s_weight,                                                        &
+            check_negative, nudge_ic, halo_update_type, gfs_phil, agrid_vel_rst,                              &
+            do_uni_zfull, adj_mass_vmr, fac_n_spl, fhouri, update_blend, regional, bc_update_interval,        &
             regional_bcs_from_gsi, write_restart_with_bcs, nrows_blend
 
 #ifdef INTERNAL_FILE_NML
